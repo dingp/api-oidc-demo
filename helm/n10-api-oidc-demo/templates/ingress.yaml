@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "n10-api-oidc-demo.fullname" . }}
+  name: {{ .Values.ingress.name | default (include "n10-api-oidc-demo.fullname" .) }}
   labels:
     {{- include "n10-api-oidc-demo.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
@@ -19,7 +19,7 @@ spec:
   {{- end }}
   rules:
     {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
+    - host: {{ tpl .host $ | quote }}
       http:
         paths:
           {{- range .paths }}

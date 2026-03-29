@@ -14,6 +14,7 @@ RUN pip install --upgrade pip \
 
 COPY app/n10_api_oidc_demo ./n10_api_oidc_demo
 COPY app/templates ./templates
+COPY app/static ./static
 
 EXPOSE 8000
 

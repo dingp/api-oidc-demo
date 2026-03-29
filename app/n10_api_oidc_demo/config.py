@@ -20,6 +20,15 @@ class Settings(BaseSettings):
 
     oidc_verify_audience: bool = Field(default=True, alias="OIDC_VERIFY_AUDIENCE")
 
+    iri_projects_url: str = Field(
+        default="https://api.iri.nersc.gov/api/v1/account/projects",
+        alias="IRI_PROJECTS_URL",
+    )
+    iri_api_scope: str = Field(
+        default="https://auth.globus.org/scopes/ed3e577d-f7f3-4639-b96e-ff5a8445d699/iri_api",
+        alias="IRI_API_SCOPE",
+    )
+
     @property
     def issuer(self) -> str:
         return f"{self.keycloak_base_url.rstrip('/')}/realms/{self.keycloak_realm}"

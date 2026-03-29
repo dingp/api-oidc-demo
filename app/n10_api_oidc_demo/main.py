@@ -2,11 +2,16 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from n10_api_oidc_demo.auth import require_token_claims
 from n10_api_oidc_demo.config import Settings, get_settings
-from n10_api_oidc_demo.keycloak import fetch_broker_token
+from n10_api_oidc_demo.keycloak import (
+    extract_scoped_access_token,
+    fetch_broker_token,
+    fetch_iri_projects,
+)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -15,6 +20,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title=settings.app_name)
+    app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request, settings: Settings = Depends(get_settings)) -> HTMLResponse:
@@ -27,6 +33,7 @@ def create_app() -> FastAPI:
                 "keycloak_realm": settings.keycloak_realm,
                 "keycloak_client_id": settings.keycloak_client_id,
                 "broker_alias": settings.keycloak_broker_alias,
+                "iri_api_scope": settings.iri_api_scope,
             },
         )
 
@@ -64,6 +71,26 @@ def create_app() -> FastAPI:
             "claims": claims,
             "broker_alias": settings.keycloak_broker_alias,
             "broker_token": broker_token,
+        }
+
+    @app.get("/api/iri/projects")
+    async def iri_projects(
+        claims: dict = Depends(require_token_claims),
+        authorization: str | None = Header(default=None),
+        settings: Settings = Depends(get_settings),
+    ) -> dict:
+        if not authorization:
+            return {"claims": claims, "iri_projects": None, "warning": "Missing Authorization header"}
+
+        user_token = authorization.removeprefix("Bearer").strip()
+        broker_token = await fetch_broker_token(settings, user_token)
+        iri_access_token = extract_scoped_access_token(broker_token, settings.iri_api_scope)
+        projects = await fetch_iri_projects(settings, iri_access_token)
+        return {
+            "claims": claims,
+            "broker_alias": settings.keycloak_broker_alias,
+            "iri_api_scope": settings.iri_api_scope,
+            "iri_projects": projects,
         }
 
     return app

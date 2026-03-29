@@ -60,7 +60,7 @@
 
       .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        grid-template-columns: 1fr;
         gap: 18px;
       }
 
@@ -112,7 +112,7 @@
         border-radius: 16px;
         background: #171c21;
         color: #f3f7fb;
-        min-height: 140px;
+        height: 260px;
       }
 
       dl {
@@ -141,7 +141,6 @@
         color: var(--accent-dark);
       }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/keycloak-js@26.1.2/dist/keycloak.min.js"></script>
   </head>
   <body>
     <main class="shell">
@@ -149,9 +148,10 @@
         <div class="status off" id="login-status">Not authenticated</div>
         <h1>{{ app_name }}</h1>
         <p class="lede">
-          This demo logs into Keycloak, sends the resulting ID token to FastAPI, validates it against
-          the realm JWKS, and uses it to fetch the stored external token for the
-          <strong>{{ broker_alias }}</strong> brokered identity provider.
+          This demo logs into Keycloak, sends the resulting access token to FastAPI, validates it against
+          the realm JWKS, fetches the stored broker token for <strong>{{ broker_alias }}</strong>, then
+          calls the IRI API using the Globus access token whose scope includes
+          <code>{{ iri_api_scope }}</code>.
         </p>
       </section>
 
@@ -171,12 +171,13 @@
           <div class="actions">
             <button id="login">Login</button>
             <button class="secondary" id="load-token">Fetch Globus Token</button>
+            <button class="secondary" id="load-projects">Fetch IRI Projects</button>
             <button class="secondary" id="logout">Logout</button>
           </div>
         </article>
 
         <article class="panel">
-          <h2>ID Token Claims</h2>
+          <h2>Access Token Claims</h2>
           <pre id="claims-view">Waiting for login.</pre>
         </article>
 
@@ -184,10 +185,17 @@
           <h2>Broker Token Response</h2>
           <pre id="broker-view">No broker token requested yet.</pre>
         </article>
+
+        <article class="panel">
+          <h2>IRI Projects Response</h2>
+          <pre id="iri-view">No IRI projects request yet.</pre>
+        </article>
       </section>
     </main>
 
-    <script>
+    <script type="module">
+      import Keycloak from "/static/keycloak.js";
+
       const keycloak = new Keycloak({
         url: "{{ keycloak_base_url }}",
         realm: "{{ keycloak_realm }}",
@@ -198,6 +206,7 @@
       const subject = document.getElementById("subject");
       const claimsView = document.getElementById("claims-view");
       const brokerView = document.getElementById("broker-view");
+      const iriView = document.getElementById("iri-view");
 
       function setLoggedInState(authenticated) {
         loginStatus.textContent = authenticated ? "Authenticated" : "Not authenticated";
@@ -207,7 +216,7 @@
       async function loadClaims() {
         const response = await fetch("/api/me", {
           headers: {
-            Authorization: `Bearer ${keycloak.idToken}`
+            Authorization: `Bearer ${keycloak.token}`
           }
         });
         const payload = await response.json();
@@ -219,11 +228,22 @@
         brokerView.textContent = "Loading broker token from Keycloak...";
         const response = await fetch("/api/keycloak/globus-token", {
           headers: {
-            Authorization: `Bearer ${keycloak.idToken}`
+            Authorization: `Bearer ${keycloak.token}`
           }
         });
         const payload = await response.json();
         brokerView.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      async function loadIriProjects() {
+        iriView.textContent = "Loading IRI projects from backend...";
+        const response = await fetch("/api/iri/projects", {
+          headers: {
+            Authorization: `Bearer ${keycloak.token}`
+          }
+        });
+        const payload = await response.json();
+        iriView.textContent = JSON.stringify(payload, null, 2);
       }
 
       async function init() {
@@ -252,8 +272,17 @@
         await loadBrokerToken();
       });
 
+      document.getElementById("load-projects").addEventListener("click", async () => {
+        if (!keycloak.authenticated) {
+          await keycloak.login();
+          return;
+        }
+        await keycloak.updateToken(30);
+        await loadIriProjects();
+      });
+
       document.getElementById("logout").addEventListener("click", () => {
-        keycloak.logout({ redirectUri: window.location.origin });
+        keycloak.logout({ redirectUri: `${window.location.origin}/` });
       });
 
       init().catch((error) => {

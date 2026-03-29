@@ -53,6 +53,10 @@ spec:
               value: {{ .Values.app.keycloakVerifyTls | quote }}
             - name: OIDC_VERIFY_AUDIENCE
               value: {{ .Values.app.oidcVerifyAudience | quote }}
+            - name: IRI_PROJECTS_URL
+              value: {{ .Values.app.iriProjectsUrl | quote }}
+            - name: IRI_API_SCOPE
+              value: {{ .Values.app.iriApiScope | quote }}
           readinessProbe:
             httpGet:
               path: /api/health

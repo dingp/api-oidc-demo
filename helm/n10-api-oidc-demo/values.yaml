@@ -1,8 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/example/n10-api-oidc-demo
-  pullPolicy: IfNotPresent
+  repository: ghcr.io/dingp/api-oidc-demo
+  pullPolicy: Always
   tag: latest
 
 service:
@@ -13,14 +13,16 @@ service:
 containerPort: 8000
 
 app:
-  name: N10 OIDC Demo
+  name: API OIDC Demo
   env: development
-  keycloakBaseUrl: https://keycloak.example.org
-  keycloakRealm: demo
-  keycloakClientId: demo-web
+  keycloakBaseUrl: https://oidc.lbl-b59.org
+  keycloakRealm: amsc
+  keycloakClientId: api-oidc-demo
   keycloakBrokerAlias: globus
   keycloakVerifyTls: true
   oidcVerifyAudience: true
+  iriProjectsUrl: https://api.iri.nersc.gov/api/v1/account/projects
+  iriApiScope: https://auth.globus.org/scopes/ed3e577d-f7f3-4639-b96e-ff5a8445d699/iri_api
 
 resources: {}
 
@@ -36,14 +38,22 @@ podAnnotations: {}
 
 podSecurityContext: {}
 
-securityContext: {}
+securityContext:
+  capabilities:
+    drop:
+      - ALL
 
 ingress:
   enabled: false
+  name: app
   className: ""
   annotations: {}
   hosts:
-    - host: n10-api-oidc-demo.example.org
+    - host: app-oidc-demo.lbl-b59.org
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: "{{ .Values.ingress.name }}.{{ .Release.Namespace }}.development.svc.spin.nersc.org"
       paths:
         - path: /
           pathType: Prefix
