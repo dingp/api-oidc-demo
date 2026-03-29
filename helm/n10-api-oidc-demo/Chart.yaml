@@ -1,0 +1,6 @@
+apiVersion: v2
+name: n10-api-oidc-demo
+description: Helm chart for the FastAPI Keycloak OIDC demo
+version: 0.1.0
+appVersion: "0.1.0"
+type: application

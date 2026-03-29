@@ -1,0 +1,50 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/example/n10-api-oidc-demo
+  pullPolicy: IfNotPresent
+  tag: latest
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+containerPort: 8000
+
+app:
+  name: N10 OIDC Demo
+  env: development
+  keycloakBaseUrl: https://keycloak.example.org
+  keycloakRealm: demo
+  keycloakClientId: demo-web
+  keycloakBrokerAlias: globus
+  keycloakVerifyTls: true
+  oidcVerifyAudience: true
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+imagePullSecrets: []
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: n10-api-oidc-demo.example.org
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "n10-api-oidc-demo.fullname" . }}
+  labels:
+    {{- include "n10-api-oidc-demo.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "n10-api-oidc-demo.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "n10-api-oidc-demo.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "n10-api-oidc-demo.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+          env:
+            - name: APP_NAME
+              value: {{ .Values.app.name | quote }}
+            - name: APP_ENV
+              value: {{ .Values.app.env | quote }}
+            - name: APP_HOST
+              value: 0.0.0.0
+            - name: APP_PORT
+              value: {{ .Values.containerPort | quote }}
+            - name: KEYCLOAK_BASE_URL
+              value: {{ .Values.app.keycloakBaseUrl | quote }}
+            - name: KEYCLOAK_REALM
+              value: {{ .Values.app.keycloakRealm | quote }}
+            - name: KEYCLOAK_CLIENT_ID
+              value: {{ .Values.app.keycloakClientId | quote }}
+            - name: KEYCLOAK_BROKER_ALIAS
+              value: {{ .Values.app.keycloakBrokerAlias | quote }}
+            - name: KEYCLOAK_VERIFY_TLS
+              value: {{ .Values.app.keycloakVerifyTls | quote }}
+            - name: OIDC_VERIFY_AUDIENCE
+              value: {{ .Values.app.oidcVerifyAudience | quote }}
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

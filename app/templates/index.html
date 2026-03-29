@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ app_name }}</title>
+    <style>
+      :root {
+        --bg: #f4efe6;
+        --panel: rgba(255, 252, 246, 0.92);
+        --ink: #1f2933;
+        --muted: #5b6671;
+        --accent: #b44b2a;
+        --accent-dark: #7f2f16;
+        --border: rgba(31, 41, 51, 0.14);
+        --shadow: 0 18px 50px rgba(31, 41, 51, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(180, 75, 42, 0.2), transparent 28%),
+          radial-gradient(circle at top right, rgba(46, 115, 112, 0.16), transparent 24%),
+          linear-gradient(135deg, #efe5d4, var(--bg));
+      }
+
+      .shell {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 40px 20px 56px;
+      }
+
+      .hero {
+        display: grid;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: "IBM Plex Serif", Georgia, serif;
+        font-size: clamp(2.5rem, 6vw, 4.6rem);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+      }
+
+      .lede {
+        max-width: 780px;
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 18px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(6px);
+      }
+
+      .panel h2 {
+        margin-top: 0;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 18px;
+        font: inherit;
+        cursor: pointer;
+        color: #fff;
+        background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      }
+
+      button.secondary {
+        color: var(--ink);
+        background: #fff;
+        border: 1px solid var(--border);
+      }
+
+      pre {
+        margin: 0;
+        padding: 16px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        border-radius: 16px;
+        background: #171c21;
+        color: #f3f7fb;
+        min-height: 140px;
+      }
+
+      dl {
+        margin: 0;
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 10px 14px;
+      }
+
+      dt {
+        color: var(--muted);
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(46, 115, 112, 0.12);
+        color: #1b5e5b;
+      }
+
+      .status.off {
+        background: rgba(180, 75, 42, 0.12);
+        color: var(--accent-dark);
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/keycloak-js@26.1.2/dist/keycloak.min.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="status off" id="login-status">Not authenticated</div>
+        <h1>{{ app_name }}</h1>
+        <p class="lede">
+          This demo logs into Keycloak, sends the resulting ID token to FastAPI, validates it against
+          the realm JWKS, and uses it to fetch the stored external token for the
+          <strong>{{ broker_alias }}</strong> brokered identity provider.
+        </p>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Session</h2>
+          <dl>
+            <dt>Realm</dt>
+            <dd id="realm">{{ keycloak_realm }}</dd>
+            <dt>Client</dt>
+            <dd id="client-id">{{ keycloak_client_id }}</dd>
+            <dt>Broker</dt>
+            <dd id="broker">{{ broker_alias }}</dd>
+            <dt>Subject</dt>
+            <dd id="subject">-</dd>
+          </dl>
+          <div class="actions">
+            <button id="login">Login</button>
+            <button class="secondary" id="load-token">Fetch Globus Token</button>
+            <button class="secondary" id="logout">Logout</button>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>ID Token Claims</h2>
+          <pre id="claims-view">Waiting for login.</pre>
+        </article>
+
+        <article class="panel">
+          <h2>Broker Token Response</h2>
+          <pre id="broker-view">No broker token requested yet.</pre>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const keycloak = new Keycloak({
+        url: "{{ keycloak_base_url }}",
+        realm: "{{ keycloak_realm }}",
+        clientId: "{{ keycloak_client_id }}"
+      });
+
+      const loginStatus = document.getElementById("login-status");
+      const subject = document.getElementById("subject");
+      const claimsView = document.getElementById("claims-view");
+      const brokerView = document.getElementById("broker-view");
+
+      function setLoggedInState(authenticated) {
+        loginStatus.textContent = authenticated ? "Authenticated" : "Not authenticated";
+        loginStatus.className = authenticated ? "status" : "status off";
+      }
+
+      async function loadClaims() {
+        const response = await fetch("/api/me", {
+          headers: {
+            Authorization: `Bearer ${keycloak.idToken}`
+          }
+        });
+        const payload = await response.json();
+        claimsView.textContent = JSON.stringify(payload, null, 2);
+        subject.textContent = payload.claims?.sub || "-";
+      }
+
+      async function loadBrokerToken() {
+        brokerView.textContent = "Loading broker token from Keycloak...";
+        const response = await fetch("/api/keycloak/globus-token", {
+          headers: {
+            Authorization: `Bearer ${keycloak.idToken}`
+          }
+        });
+        const payload = await response.json();
+        brokerView.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      async function init() {
+        const authenticated = await keycloak.init({
+          onLoad: "check-sso",
+          pkceMethod: "S256",
+          silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`
+        });
+
+        setLoggedInState(authenticated);
+        if (authenticated) {
+          await loadClaims();
+        }
+      }
+
+      document.getElementById("login").addEventListener("click", () => {
+        keycloak.login();
+      });
+
+      document.getElementById("load-token").addEventListener("click", async () => {
+        if (!keycloak.authenticated) {
+          await keycloak.login();
+          return;
+        }
+        await keycloak.updateToken(30);
+        await loadBrokerToken();
+      });
+
+      document.getElementById("logout").addEventListener("click", () => {
+        keycloak.logout({ redirectUri: window.location.origin });
+      });
+
+      init().catch((error) => {
+        setLoggedInState(false);
+        claimsView.textContent = `Keycloak init failed:\n${error}`;
+      });
+    </script>
+  </body>
+</html>
