@@ -15,6 +15,7 @@ The design below assumes:
 - Tier 1 browser client: `api-oidc-demo-2-tier1`
 - Tier 2 browser client: `api-oidc-demo-2-tier2`
 - Tier 3 browser client: `api-oidc-demo-2-tier3`
+- Application URL: `https://app2-oidc-demo.lbl-b59.org`
 
 ## What Keycloak Can And Cannot Do
 
@@ -280,6 +281,7 @@ Use these exact client IDs:
 - Tier 1 browser client: `api-oidc-demo-2-tier1`
 - Tier 2 browser client: `api-oidc-demo-2-tier2`
 - Tier 3 browser client: `api-oidc-demo-2-tier3`
+- Application URL: `https://app2-oidc-demo.lbl-b59.org`
 
 ### Proposed API Endpoints
 
@@ -455,12 +457,19 @@ For each scope:
    - `Direct access grants`: `Off`
    - `Service accounts roles`: `Off`
 6. Click `Save`.
-7. Set frontend URLs:
-   - `Root URL`
-   - `Home URL`
-   - `Valid redirect URIs`
-   - `Valid post logout redirect URIs`
-   - `Web origins`
+7. Set frontend URLs for `https://app2-oidc-demo.lbl-b59.org`:
+   - `Root URL`: `https://app2-oidc-demo.lbl-b59.org`
+   - `Home URL`: `https://app2-oidc-demo.lbl-b59.org/`
+   - `Valid redirect URIs`:
+     - `https://app2-oidc-demo.lbl-b59.org`
+     - `https://app2-oidc-demo.lbl-b59.org/`
+     - `https://app2-oidc-demo.lbl-b59.org/*`
+     - `https://app2-oidc-demo.lbl-b59.org/silent-check-sso.html`
+   - `Valid post logout redirect URIs`:
+     - `https://app2-oidc-demo.lbl-b59.org`
+     - `https://app2-oidc-demo.lbl-b59.org/`
+   - `Web origins`:
+     - `https://app2-oidc-demo.lbl-b59.org`
 8. Save.
 9. Go to `Client scopes`.
 10. Verify built-in `roles` is present as a default scope if you still want role claims in tokens.
@@ -487,7 +496,19 @@ For each scope:
    - `Direct access grants`: `Off`
    - `Service accounts roles`: `Off`
 6. Click `Save`.
-7. Set frontend URLs.
+7. Set frontend URLs for `https://app2-oidc-demo.lbl-b59.org`:
+   - `Root URL`: `https://app2-oidc-demo.lbl-b59.org`
+   - `Home URL`: `https://app2-oidc-demo.lbl-b59.org/`
+   - `Valid redirect URIs`:
+     - `https://app2-oidc-demo.lbl-b59.org`
+     - `https://app2-oidc-demo.lbl-b59.org/`
+     - `https://app2-oidc-demo.lbl-b59.org/*`
+     - `https://app2-oidc-demo.lbl-b59.org/silent-check-sso.html`
+   - `Valid post logout redirect URIs`:
+     - `https://app2-oidc-demo.lbl-b59.org`
+     - `https://app2-oidc-demo.lbl-b59.org/`
+   - `Web origins`:
+     - `https://app2-oidc-demo.lbl-b59.org`
 8. Save.
 9. Go to `Client scopes`.
 10. Add `api-oidc-demo-2-audience` as a `Default` scope.
@@ -534,7 +555,19 @@ Create a marker scope used only for browser-flow enforcement.
    - `Direct access grants`: `Off`
    - `Service accounts roles`: `Off`
 6. Click `Save`.
-7. Set frontend URLs.
+7. Set frontend URLs for `https://app2-oidc-demo.lbl-b59.org`:
+   - `Root URL`: `https://app2-oidc-demo.lbl-b59.org`
+   - `Home URL`: `https://app2-oidc-demo.lbl-b59.org/`
+   - `Valid redirect URIs`:
+     - `https://app2-oidc-demo.lbl-b59.org`
+     - `https://app2-oidc-demo.lbl-b59.org/`
+     - `https://app2-oidc-demo.lbl-b59.org/*`
+     - `https://app2-oidc-demo.lbl-b59.org/silent-check-sso.html`
+   - `Valid post logout redirect URIs`:
+     - `https://app2-oidc-demo.lbl-b59.org`
+     - `https://app2-oidc-demo.lbl-b59.org/`
+   - `Web origins`:
+     - `https://app2-oidc-demo.lbl-b59.org`
 8. Save.
 9. Go to `Client scopes`.
 10. Add `api-oidc-demo-2-audience` as a `Default` scope.
