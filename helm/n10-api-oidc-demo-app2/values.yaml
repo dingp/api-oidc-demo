@@ -41,24 +41,3 @@ imagePullSecrets: []
 podAnnotations: {}
 
 podSecurityContext: {}
-
-securityContext:
-  capabilities:
-    drop:
-      - ALL
-
-ingress:
-  enabled: false
-  name: app2
-  className: ""
-  annotations: {}
-  hosts:
-    - host: app2-oidc-demo.lbl-b59.org
-      paths:
-        - path: /
-          pathType: Prefix
-    - host: "{{ .Values.ingress.name }}.{{ .Release.Namespace }}.development.svc.spin.nersc.org"
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []

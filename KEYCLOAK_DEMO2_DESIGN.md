@@ -708,3 +708,121 @@ For a tier-3-eligible user:
 
 - <https://www.keycloak.org/docs/latest/server_admin/>
 - <https://www.keycloak.org/securing-apps/javascript-adapter>
+
+
+## Additional Authorization Flows
+
+The API server should not assume that every access token comes from the browser UI.
+
+For demo 2, support three caller types:
+
+1. Web UI
+- Flow: Authorization Code with PKCE
+- Clients: `api-oidc-demo-2-tier1`, `api-oidc-demo-2-tier2`, `api-oidc-demo-2-tier3`
+- Purpose: browser sessions with tiered lifetimes and scopes
+
+2. Human CLI or direct `curl`
+- Flow: Device Authorization Grant
+- Recommended client: `api-oidc-demo-2-cli`
+- Purpose: terminal-driven login without embedding the user password in the CLI
+
+3. Service-to-service automation
+- Flow: Client Credentials
+- Recommended client: `api-oidc-demo-2-service`
+- Purpose: non-user automation using a confidential client and service account
+
+### Why Not Use Implicit Or Password Grant As The Main CLI Story
+
+- `Implicit` is legacy and does not give you refresh tokens.
+- `Resource Owner Password Credentials` or Keycloak `Direct Access Grants` sends the user password directly to the client.
+- For terminal use, Device Authorization Grant is a cleaner modern default.
+
+### API-Side Rule
+
+The API should accept bearer tokens from any of these flows as long as all of the following are true:
+
+- issuer is the realm issuer
+- signature is valid
+- token is not expired
+- `aud` includes `api-oidc-demo-2-api`
+- required scopes are present
+
+That means the API does not need separate endpoint code for web, CLI, or service callers.
+
+The token may differ in claims such as:
+
+- `azp`
+- `client_id`
+- presence or absence of user claims
+
+But the authorization contract for demo 2 stays the same:
+
+- `GET /api/demo2/projects` requires `demo2.projects.read`
+- `GET /api/demo2/reports` requires `demo2.reports.read`
+- `GET /api/demo2/users` requires `demo2.users.read`
+- `PUT /api/demo2/preferences` requires `demo2.users.write`
+
+### CLI Client Recommendation
+
+Create a public OIDC client:
+
+- `Client ID`: `api-oidc-demo-2-cli`
+
+Recommended settings:
+
+- `Client authentication`: `Off`
+- `Standard flow`: `Off`
+- `Direct access grants`: `Off`
+- `OAuth 2.0 Device Authorization Grant`: `On`
+
+Attach these optional scopes as needed:
+
+- `demo2.projects.read`
+- `demo2.reports.read`
+- `demo2.users.read`
+- `demo2.users.write`
+
+Also attach the shared audience scope:
+
+- `api-oidc-demo-2-audience`
+
+### Service Client Recommendation
+
+Create a confidential OIDC client:
+
+- `Client ID`: `api-oidc-demo-2-service`
+
+Recommended settings:
+
+- `Client authentication`: `On`
+- `Service accounts roles`: `On`
+- `Standard flow`: `Off`
+- `Direct access grants`: `Off`
+
+Attach the shared audience scope:
+
+- `api-oidc-demo-2-audience`
+
+Then grant the service account only the scopes or roles it actually needs.
+
+### Device Flow Endpoints
+
+For realm `amsc` at `https://oidc.lbl-b59.org`, the relevant endpoints are:
+
+- discovery: `https://oidc.lbl-b59.org/realms/amsc/.well-known/openid-configuration`
+- device authorization: `https://oidc.lbl-b59.org/realms/amsc/protocol/openid-connect/auth/device`
+- token endpoint: `https://oidc.lbl-b59.org/realms/amsc/protocol/openid-connect/token`
+
+### Example CLI Access Pattern
+
+1. Request device and user codes from the device authorization endpoint.
+2. Open the verification URI in a browser.
+3. Log in and approve the request.
+4. Poll the token endpoint until the access token is issued.
+5. Use the access token with `curl`.
+
+Example API call after token acquisition:
+
+```bash
+curl -H "Authorization: Bearer $ACCESS_TOKEN"   https://your-api-host/api/demo2/projects
+```
