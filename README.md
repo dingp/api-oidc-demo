@@ -98,3 +98,60 @@ The live demo currently runs in namespace `api-oidc-demo` on the development clu
 - The app validates Keycloak JWTs locally using the realm JWKS.
 - If Keycloak access tokens do not contain the correct audience, either add the audience mapper or disable audience verification for the demo.
 - The broker token payload shape can vary, so the app checks both `other_tokens` and `bearer_token.other_tokens` when extracting the scoped Globus token.
+
+
+## App 2
+
+A second demo now lives under `app2/`.
+
+It uses three Keycloak browser clients:
+
+- `api-oidc-demo-2-tier1`
+- `api-oidc-demo-2-tier2`
+- `api-oidc-demo-2-tier3`
+
+The app validates tokens against audience `api-oidc-demo-2-api` and authorizes API endpoints from the `scope` claim.
+
+Local run:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r app2/requirements.txt
+cp app2/.env.example .env
+uvicorn n10_api_oidc_demo2.main:app --app-dir app2 --reload --host 0.0.0.0 --port 8000
+```
+
+Keycloak design and setup notes for this second demo are in `KEYCLOAK_DEMO2_DESIGN.md`.
+
+
+## Ingress Proxy Trust
+
+On the current `development` cluster, the `ingress-nginx` controller runs in namespace `ingress-nginx` and its pod IPs are in `10.42.0.0/16`. For `app2`, that means:
+
+- `TRUSTED_PROXY_CIDRS=10.42.0.0/16,127.0.0.1/32`
+- the app should use `X-Forwarded-For` only when the immediate peer is inside those CIDRs
+
+For `ingress-nginx`, the relevant controller config is:
+
+```yaml
+controller:
+  config:
+    use-forwarded-headers: "true"
+    enable-real-ip: "true"
+    forwarded-for-header: "X-Forwarded-For"
+    compute-full-forwarded-for: "true"
+    proxy-real-ip-cidr: "10.42.0.0/16"
+```
+
+
+## App 2 Image And Chart
+
+The second demo has its own build and deployment assets:
+
+- Dockerfile: `image/app2.Dockerfile`
+- GitHub Actions workflow: `.github/workflows/build-image-app2.yaml`
+- GHCR image: `ghcr.io/${{ github.repository }}-app2`
+- Helm chart: `helm/n10-api-oidc-demo-app2`
+
+The app2 chart defaults to image `ghcr.io/dingp/api-oidc-demo-app2:latest` and exposes the app2-specific environment variables for tiered clients and trusted proxy CIDRs.

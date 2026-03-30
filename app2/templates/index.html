@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ app_name }}</title>
+    <style>
+      :root {
+        --bg: #eef3ef;
+        --panel: rgba(255, 255, 255, 0.9);
+        --ink: #182329;
+        --muted: #5f7077;
+        --accent: #0f766e;
+        --accent-2: #155e75;
+        --warn: #92400e;
+        --border: rgba(24, 35, 41, 0.14);
+        --shadow: 0 18px 48px rgba(21, 37, 44, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 15% 15%, rgba(15, 118, 110, 0.18), transparent 24%),
+          radial-gradient(circle at 90% 10%, rgba(21, 94, 117, 0.14), transparent 22%),
+          linear-gradient(160deg, #e4efe9, var(--bg));
+      }
+      .shell {
+        max-width: 1160px;
+        margin: 0 auto;
+        padding: 36px 20px 56px;
+      }
+      .hero {
+        display: grid;
+        gap: 18px;
+        margin-bottom: 22px;
+      }
+      h1 {
+        margin: 0;
+        font-family: "IBM Plex Serif", Georgia, serif;
+        font-size: clamp(2.4rem, 5vw, 4.4rem);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+      }
+      .lede {
+        max-width: 860px;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(15, 118, 110, 0.12);
+        color: #115e59;
+      }
+      .status.off {
+        background: rgba(146, 64, 14, 0.12);
+        color: var(--warn);
+      }
+      .grid {
+        display: grid;
+        gap: 18px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(6px);
+      }
+      .panel h2 {
+        margin: 0 0 14px;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .actions, .endpoint-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 14px;
+      }
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 18px;
+        font: inherit;
+        cursor: pointer;
+        color: white;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      }
+      button.secondary {
+        color: var(--ink);
+        background: white;
+        border: 1px solid var(--border);
+      }
+      dl {
+        margin: 0;
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 10px 14px;
+      }
+      dt { color: var(--muted); }
+      pre {
+        margin: 0;
+        padding: 16px;
+        border-radius: 16px;
+        background: #172025;
+        color: #eef6fa;
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow: auto;
+        height: 220px;
+      }
+      textarea {
+        width: 100%;
+        min-height: 96px;
+        resize: vertical;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        padding: 14px;
+        font: inherit;
+        background: #fff;
+        color: var(--ink);
+      }
+      .tier-note, .field-note {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      @media (max-width: 720px) {
+        .shell { padding-inline: 14px; }
+        dl { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="status off" id="login-status">Not authenticated</div>
+        <h1>{{ app_name }}</h1>
+        <p class="lede">
+          This demo uses three Keycloak browser clients against realm <strong>{{ keycloak_realm }}</strong>.
+          Tier 1 issues readonly tokens, tier 2 issues full-access short-lived tokens, and tier 3 reuses the
+          full-access scope set with a longer lifetime and a Keycloak-side eligibility gate. Users can also set
+          allowed IP ranges for their token session, and the backend enforces those ranges on protected endpoints.
+        </p>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Session</h2>
+          <dl>
+            <dt>Realm</dt>
+            <dd>{{ keycloak_realm }}</dd>
+            <dt>API Audience</dt>
+            <dd id="api-audience">{{ api_audience }}</dd>
+            <dt>Active Tier</dt>
+            <dd id="active-tier">-</dd>
+            <dt>Client</dt>
+            <dd id="client-id">-</dd>
+            <dt>Subject</dt>
+            <dd id="subject">-</dd>
+            <dt>Granted Scopes</dt>
+            <dd id="granted-scopes">-</dd>
+            <dt>Observed Client IP</dt>
+            <dd id="request-ip">-</dd>
+            <dt>Allowed Ranges</dt>
+            <dd id="allowed-ranges">-</dd>
+          </dl>
+          <div class="actions">
+            <button data-tier="tier1" id="login-tier1">Login Tier 1</button>
+            <button data-tier="tier2" id="login-tier2">Login Tier 2</button>
+            <button data-tier="tier3" id="login-tier3">Login Tier 3</button>
+            <button class="secondary" id="logout">Logout</button>
+          </div>
+          <p class="tier-note">
+            Tier 1 scopes: <code>{{ tier1_scopes }}</code><br />
+            Tier 2 scopes: <code>{{ tier2_scopes }}</code><br />
+            Tier 3 scopes: <code>{{ tier3_scopes }}</code>
+          </p>
+        </article>
+
+        <article class="panel">
+          <h2>IP Policy</h2>
+          <textarea id="ip-ranges" placeholder="Enter one CIDR per line, for example:
+127.0.0.1/32
+10.0.0.0/8"></textarea>
+          <div class="actions">
+            <button class="secondary" id="save-ip-policy">Save IP Policy</button>
+            <button class="secondary" id="load-ip-policy">Refresh IP Policy</button>
+          </div>
+          <p class="field-note">
+            Leave the list empty to disable IP-range enforcement for your subject. When set, every protected demo endpoint
+            checks the request IP against these CIDRs.
+          </p>
+        </article>
+
+        <article class="panel">
+          <h2>Access Token Claims</h2>
+          <pre id="claims-view">Choose a tier and log in.</pre>
+        </article>
+
+        <article class="panel">
+          <h2>Endpoint Actions</h2>
+          <div class="endpoint-buttons">
+            <button class="secondary" id="load-projects">GET /api/demo2/projects</button>
+            <button class="secondary" id="load-reports">GET /api/demo2/reports</button>
+            <button class="secondary" id="load-users">GET /api/demo2/users</button>
+            <button class="secondary" id="update-preferences">PUT /api/demo2/preferences</button>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>API Response</h2>
+          <pre id="api-view">No API request sent yet.</pre>
+        </article>
+      </section>
+    </main>
+
+    <script type="module">
+      import Keycloak from "/static/keycloak.js";
+
+      const tierConfigs = {
+        tier1: {
+          label: "Tier 1",
+          clientId: "{{ tier1_client_id }}",
+          scope: "{{ tier1_scopes }}"
+        },
+        tier2: {
+          label: "Tier 2",
+          clientId: "{{ tier2_client_id }}",
+          scope: "{{ tier2_scopes }}"
+        },
+        tier3: {
+          label: "Tier 3",
+          clientId: "{{ tier3_client_id }}",
+          scope: "{{ tier3_scopes }}"
+        }
+      };
+
+      const loginStatus = document.getElementById("login-status");
+      const activeTier = document.getElementById("active-tier");
+      const clientIdView = document.getElementById("client-id");
+      const subjectView = document.getElementById("subject");
+      const grantedScopesView = document.getElementById("granted-scopes");
+      const requestIpView = document.getElementById("request-ip");
+      const allowedRangesView = document.getElementById("allowed-ranges");
+      const ipRangesField = document.getElementById("ip-ranges");
+      const claimsView = document.getElementById("claims-view");
+      const apiView = document.getElementById("api-view");
+
+      let keycloak = null;
+      let currentTier = null;
+
+      function setLoggedInState(authenticated) {
+        loginStatus.textContent = authenticated ? "Authenticated" : "Not authenticated";
+        loginStatus.className = authenticated ? "status" : "status off";
+      }
+
+      function resetSessionDetails() {
+        activeTier.textContent = currentTier ? tierConfigs[currentTier].label : "-";
+        clientIdView.textContent = currentTier ? tierConfigs[currentTier].clientId : "-";
+        subjectView.textContent = "-";
+        grantedScopesView.textContent = "-";
+        requestIpView.textContent = "-";
+        allowedRangesView.textContent = "-";
+        ipRangesField.value = "";
+      }
+
+      function buildKeycloakClient(tier) {
+        const config = tierConfigs[tier];
+        currentTier = tier;
+        sessionStorage.setItem("demo2-tier", tier);
+        activeTier.textContent = config.label;
+        clientIdView.textContent = config.clientId;
+        keycloak = new Keycloak({
+          url: "{{ keycloak_base_url }}",
+          realm: "{{ keycloak_realm }}",
+          clientId: config.clientId
+        });
+        return keycloak;
+      }
+
+      async function initStoredTier() {
+        const storedTier = sessionStorage.getItem("demo2-tier");
+        if (!storedTier || !tierConfigs[storedTier]) {
+          resetSessionDetails();
+          return;
+        }
+        buildKeycloakClient(storedTier);
+        const authenticated = await keycloak.init({
+          onLoad: "check-sso",
+          pkceMethod: "S256",
+          silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`
+        });
+        setLoggedInState(authenticated);
+        if (authenticated) {
+          await loadClaims();
+        } else {
+          resetSessionDetails();
+        }
+      }
+
+      async function ensureActiveSession() {
+        if (!keycloak || !keycloak.authenticated) {
+          apiView.textContent = "Choose a tier and log in first.";
+          return false;
+        }
+        await keycloak.updateToken(30);
+        return true;
+      }
+
+      function renderIpPolicy(policy) {
+        requestIpView.textContent = policy?.request_ip || "-";
+        const ranges = policy?.allowed_ranges || [];
+        allowedRangesView.textContent = ranges.length ? ranges.join(", ") : "none";
+        ipRangesField.value = ranges.join(String.fromCharCode(10));
+      }
+
+      async function loadClaims() {
+        const response = await fetch("/api/me", {
+          headers: { Authorization: `Bearer ${keycloak.token}` }
+        });
+        const payload = await response.json();
+        claimsView.textContent = JSON.stringify(payload, null, 2);
+        subjectView.textContent = payload.claims?.sub || "-";
+        grantedScopesView.textContent = (payload.scopes || []).join(" ") || "-";
+        renderIpPolicy(payload.ip_policy);
+      }
+
+      async function loadIpPolicy() {
+        if (!(await ensureActiveSession())) {
+          return;
+        }
+        const response = await fetch("/api/demo2/ip-policy", {
+          headers: { Authorization: `Bearer ${keycloak.token}` }
+        });
+        const payload = await response.json();
+        apiView.textContent = JSON.stringify(payload, null, 2);
+        if (response.ok) {
+          renderIpPolicy(payload.ip_policy);
+        }
+      }
+
+      async function saveIpPolicy() {
+        if (!(await ensureActiveSession())) {
+          return;
+        }
+        const allowedRanges = ipRangesField.value
+          .split(/\r?\n|,/) 
+          .map((value) => value.trim())
+          .filter(Boolean);
+        const response = await fetch("/api/demo2/ip-policy", {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${keycloak.token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ allowed_ranges: allowedRanges })
+        });
+        const payload = await response.json();
+        apiView.textContent = JSON.stringify(payload, null, 2);
+        if (response.ok) {
+          renderIpPolicy(payload.ip_policy);
+          await loadClaims();
+        }
+      }
+
+      async function callApi(method, path, body) {
+        if (!(await ensureActiveSession())) {
+          return;
+        }
+        apiView.textContent = `${method} ${path}...`;
+        const response = await fetch(path, {
+          method,
+          headers: {
+            Authorization: `Bearer ${keycloak.token}`,
+            ...(body ? { "Content-Type": "application/json" } : {})
+          },
+          body: body ? JSON.stringify(body) : undefined
+        });
+        const payload = await response.json();
+        apiView.textContent = JSON.stringify(payload, null, 2);
+        if (response.ok) {
+          await loadClaims();
+        }
+      }
+
+      async function startLogin(tier) {
+        const config = tierConfigs[tier];
+        buildKeycloakClient(tier);
+        setLoggedInState(false);
+        claimsView.textContent = `Redirecting to ${config.label} login...`;
+        await keycloak.login({ scope: config.scope });
+      }
+
+      document.querySelectorAll("[data-tier]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          await startLogin(button.dataset.tier);
+        });
+      });
+
+      document.getElementById("save-ip-policy").addEventListener("click", async () => {
+        await saveIpPolicy();
+      });
+
+      document.getElementById("load-ip-policy").addEventListener("click", async () => {
+        await loadIpPolicy();
+      });
+
+      document.getElementById("load-projects").addEventListener("click", async () => {
+        await callApi("GET", "/api/demo2/projects");
+      });
+
+      document.getElementById("load-reports").addEventListener("click", async () => {
+        await callApi("GET", "/api/demo2/reports");
+      });
+
+      document.getElementById("load-users").addEventListener("click", async () => {
+        await callApi("GET", "/api/demo2/users");
+      });
+
+      document.getElementById("update-preferences").addEventListener("click", async () => {
+        await callApi("PUT", "/api/demo2/preferences", {
+          theme: "teal",
+          page_size: 50,
+          email_notifications: true
+        });
+      });
+
+      document.getElementById("logout").addEventListener("click", () => {
+        if (!keycloak) {
+          sessionStorage.removeItem("demo2-tier");
+          resetSessionDetails();
+          setLoggedInState(false);
+          return;
+        }
+        keycloak.logout({ redirectUri: `${window.location.origin}/` });
+      });
+
+      initStoredTier().catch((error) => {
+        sessionStorage.removeItem("demo2-tier");
+        resetSessionDetails();
+        setLoggedInState(false);
+        claimsView.textContent = `Keycloak init failed:
+${error}`;
+      });
+    </script>
+  </body>
+</html>

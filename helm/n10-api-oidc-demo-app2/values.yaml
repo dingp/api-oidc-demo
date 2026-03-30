@@ -1,0 +1,64 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/dingp/api-oidc-demo-app2
+  pullPolicy: Always
+  tag: latest
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+containerPort: 8000
+
+app:
+  name: API OIDC Demo 2
+  env: development
+  keycloakBaseUrl: https://oidc.lbl-b59.org
+  keycloakRealm: amsc
+  keycloakVerifyTls: true
+  trustedProxyCidrs: 10.42.0.0/16,127.0.0.1/32
+  oidcApiAudience: api-oidc-demo-2-api
+  oidcVerifyAudience: true
+  tier1ClientId: api-oidc-demo-2-tier1
+  tier2ClientId: api-oidc-demo-2-tier2
+  tier3ClientId: api-oidc-demo-2-tier3
+  tier1Scopes: openid profile demo2.projects.read demo2.reports.read demo2.users.read
+  tier2Scopes: openid profile demo2.projects.read demo2.reports.read demo2.users.read demo2.users.write
+  tier3Scopes: openid profile demo2.projects.read demo2.reports.read demo2.users.read demo2.users.write
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+imagePullSecrets: []
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+
+ingress:
+  enabled: false
+  name: app2
+  className: ""
+  annotations: {}
+  hosts:
+    - host: app2-oidc-demo.lbl-b59.org
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: "{{ .Values.ingress.name }}.{{ .Release.Namespace }}.development.svc.spin.nersc.org"
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
